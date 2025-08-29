@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nel's Burguer - Monte seu Lanche!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f3e9;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        .page {
+            display: none;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .step-card {
+            min-height: 250px;
+        }
+        .ingredient-item {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .ingredient-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .ingredient-item.selected {
+            border: 3px solid #f97316;
+            background-color: #fffbeb;
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.5);
+            transform: scale(1.05);
+        }
+        .burger-part {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            transition: transform 0.5s ease-in-out;
+            transform: translateY(100px);
+        }
+        .burger-part.visible {
+            transform: translateY(0);
+        }
+        .toast-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .toast-message.show {
+            opacity: 1;
+        }
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            transition: border-color 0.2s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #f97316;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.5);
+        }
+        .input-group label {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            color: #9ca3af;
+            transition: all 0.2s;
+            pointer-events: none;
+        }
+        .input-group input:focus + label, .input-group input:not(:placeholder-shown) + label {
+            top: -0.5rem;
+            left: 0.5rem;
+            font-size: 0.75rem;
+            color: #f97316;
+            background-color: #f7f3e9;
+            padding: 0 0.25rem;
+        }
+        .tracking-status-bar {
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            position: relative;
+        }
+        .tracking-status-bar-fill {
+            height: 100%;
+            background-color: #f97316;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+        .selected-delivery-option {
+            background-color: #f97316 !important;
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal.open .modal-content {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <!-- Header -->
+    <header class="bg-white shadow-lg py-4 fixed w-full top-0 z-50">
+        <nav class="container flex justify-between items-center px-4 md:px-8">
+            <div class="flex items-center space-x-2">
+                <!-- Imagem do Logo Nel's Burguer -->
+                <img src="https://img.cdndsgni.com/preview/10287002.jpg" alt="Nel's Burguer Logo" class="rounded-full">
+                <span class="text-2xl font-bold text-orange-500">Nel's Burguer</span>
+            </div>
+            <div class="space-x-4">
+                <button onclick="showPage('builder-section')" class="text-lg font-semibold text-gray-700 hover:text-orange-500 transition-colors">Monte seu Lanche</button>
+                <button onclick="showPage('menu-section')" class="text-lg font-semibold text-gray-700 hover:text-orange-500 transition-colors">Cardápio</button>
+                <button onclick="showPage('sides-section')" class="text-lg font-semibold text-gray-700 hover:text-orange-500 transition-colors">Acompanhamentos</button>
+                <button onclick="showPage('cart-section')" class="text-lg font-semibold text-gray-700 hover:text-orange-500 transition-colors relative">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span id="cart-count" class="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="pt-24 pb-12">
+        <!-- Seção Principal (Hero) -->
+        <section id="hero-section" class="page active bg-white rounded-xl shadow-lg p-8 md:p-12 text-center container">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-orange-600 mb-4">Bem-vindo à Nel's Burguer!</h1>
+            <p class="text-xl text-gray-600 mb-8">Monte seu lanche do seu jeito ou escolha uma das nossas criações especiais. Qual o seu Nel's favorito?</p>
+            <div class="space-x-4">
+                <button onclick="showPage('builder-section')" class="bg-orange-500 text-white py-3 px-8 rounded-full font-bold transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">Monte seu Lanche</button>
+                <button onclick="showPage('menu-section')" class="bg-gray-200 text-gray-800 py-3 px-8 rounded-full font-bold transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">Ver Cardápio</button>
+            </div>
+        </section>
+
+        <!-- Seção de Montagem do Lanche -->
+        <section id="builder-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Sua Criação</h2>
+            <div class="relative w-full h-[300px] md:h-[400px] mb-8 flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
+                <!-- As partes do lanche serão adicionadas aqui dinamicamente -->
+            </div>
+            <div class="flex items-center justify-between mb-8">
+                <h3 id="current-step-title" class="text-2xl font-semibold">1. Escolha o Pão</h3>
+                <span class="text-2xl font-bold text-orange-500" id="total-price">R$ 0,00</span>
+            </div>
+            <div class="flex items-center justify-between mb-8">
+              <button id="prev-step" class="bg-gray-300 text-gray-700 py-2 px-6 rounded-full font-bold transition-colors hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">Anterior</button>
+              <button id="next-step" class="bg-orange-500 text-white py-2 px-6 rounded-full font-bold transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">Próximo</button>
+            </div>
+            <div id="ingredient-options" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                <!-- Opções serão adicionadas dinamicamente -->
+            </div>
+        </section>
+
+        <!-- Seção de Cardápio -->
+        <section id="menu-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Cardápio Temático</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Card do Lanche - Nel's Clássico -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('nels-classico')">
+                    <!-- Insira a imagem do Nel's Clássico aqui -->
+                    <img src="https://www.estadao.com.br/resizer/dixyOItHmPSgiedCSBL1iIT5lGo=/arc-anglerfish-arc2-prod-estadao/public/GUOGMQ4FRJIUPAWMYLE4WNA3SY.jpg" alt="Nel's Clássico Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Nel's Clássico</h3>
+                        <p class="text-gray-600">O clássico que nunca decepciona. Pão de gergelim, hambúrguer 100% carne, cheddar, cebola caramelizada e maionese Nel's.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 29,90</span>
+                    </div>
+                </div>
+                <!-- Card do Lanche - Camargo Vegano -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('camargo-vegano')">
+                    <!-- Insira a imagem do Camargo Vegano aqui -->
+                    <img src="https://img.freepik.com/fotos-gratis/hamburguer-vegetariano-close-up-na-tabua_23-2148784533.jpg" alt="Camargo Vegano Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Camargo Vegano</h3>
+                        <p class="text-gray-600">A opção celestial. Pão australiano, hambúrguer de grão de bico, queijo branco, rúcula e molho pesto.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 27,90</span>
+                    </div>
+                </div>
+                <!-- Card do Lanche - Camargo Duplo -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('camargo-duplo')">
+                    <!-- Insira a imagem do Camargo Duplo aqui -->
+                    <img src="https://media.istockphoto.com/id/1438143625/pt/foto/double-cheese-beef-burger-with-kitchen-background.jpg?s=612x612&w=0&k=20&c=dXrI3vty1KxzE3XWP-56TLwzmiihwzbMTNNBbtWCJ5Y=" alt="Camargo Duplo Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Camargo Duplo</h3>
+                        <p class="text-gray-600">Gigante e saboroso. Pão brioche, dois hambúrgueres de carne, bacon crocante, queijo muçarela e molho barbecue.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 34,90</span>
+                    </div>
+                </div>
+                <!-- Card do Lanche - Nel's de Frango -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('nels-frango')">
+                    <!-- Insira a imagem do Nel's de Frango aqui -->
+                    <img src="https://www.receitasnestle.com.br/sites/default/files/styles/recipe_detail_desktop_new/public/srh_recipes/ad2f5bca67422df23f8e6916d6afc6a2.jpg?itok=3A6mvEQY" alt="Nel's de Frango Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Nel's de Frango</h3>
+                        <p class="text-gray-600">Uma viagem de sabores. Pão de queijo, hambúrguer de frango empanado, alface, tomate, queijo prato e maionese temperada.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 28,90</span>
+                    </div>
+                </div>
+                <!-- Card do Lanche - Camargo de Peixe -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('camargo-peixe')">
+                    <!-- Insira a imagem do Camargo de Peixe aqui -->
+                    <img src="https://www.minhareceita.com.br/app/uploads/2025/04/R0425-SP-hamburguer-de-peixe-empanado-1200x675-1.webp" alt="Camargo de Peixe Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Camargo de Peixe</h3>
+                        <p class="text-gray-600">O sanduíche que expande seus sentidos. Pão italiano, filé de peixe empanado, queijo, cebola roxa e molho tártaro.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 31,90</span>
+                    </div>
+                </div>
+                <!-- Card do Lanche - Nel's Cosmos -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('nels-cosmos')">
+                    <!-- Insira a imagem do Nel's Cosmos aqui -->
+                    <img src="https://img.freepik.com/fotos-premium/hamburguer-empilhado-duplo-suculento-e-brega-em-fundo-preto-esfumacado-para-banners-de-anuncio-de-site_809816-6.jpg" alt="Nel's Cosmos Burger" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Nel's Cosmos</h3>
+                        <p class="text-gray-600">A explosão de sabores. Pão de brioche, hambúrguer de carne, queijo cheddar, ovo, bacon e molho especial.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 33,90</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção de Acompanhamentos -->
+        <section id="sides-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Acompanhamentos, Bebidas & Sobremesas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Card da Batata Frita -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('batata-frita')">
+                    <!-- Insira a imagem da Batata Frita aqui -->
+                    <img src=https://images.pexels.com/photos/1583884/pexels-photo-1583884.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500" alt="Batata Frita" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Batata Frita Nel's</h3>
+                        <p class="text-gray-600">Batatas crocantes e douradas, o acompanhamento perfeito para o seu lanche.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 10,00</span>
+                    </div>
+                </div>
+                <!-- Card do Milkshake -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('milkshake')">
+                    <!-- Insira a imagem do Milkshake aqui -->
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCHQmEgxGx6iJiw75dJEZpPHJX8AiZzfqOjA&s" alt="Milkshake" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Milkshake de Chocolate Camargo</h3>
+                        <p class="text-gray-600">Cremoso e irresistível. O shake ideal para finalizar a sua refeição.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 15,00</span>
+                    </div>
+                </div>
+                <!-- Card do Refrigerante -->
+                <div class="item-card bg-white rounded-lg shadow-md overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer" onclick="showItemDetails('refrigerante')">
+                    <!-- Insira a imagem do Refrigerante aqui -->
+                    <img src="https://st2.depositphotos.com/1692343/7579/i/450/depositphotos_75790055-stock-photo-refreshing-bubbly-soda-pop.jpg" alt="Refrigerante" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Refrigerante Nel's</h3>
+                        <p class="text-gray-600">Diversas opções refrescantes. Consulte o cardápio de bebidas.</p>
+                        <span class="block text-xl font-bold text-orange-500 mt-4">R$ 8,00</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção de Carrinho -->
+        <section id="cart-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Seu Carrinho</h2>
+            <div id="cart-list" class="bg-gray-50 rounded-lg p-6 mb-8">
+                <!-- Itens do carrinho serão inseridos aqui -->
+                <p id="empty-cart-message" class="text-center text-gray-500">Seu carrinho está vazio.</p>
+            </div>
+            <div id="cart-summary" class="flex justify-between items-center text-xl font-bold mb-8">
+                <span class="text-gray-800">Total do Carrinho:</span>
+                <span id="cart-total-price" class="text-orange-500">R$ 0,00</span>
+            </div>
+            <div class="flex flex-col md:flex-row justify-center items-center gap-4">
+                <button onclick="showPage('checkout-section')" class="bg-orange-500 text-white py-3 px-12 rounded-full font-bold transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    Finalizar Compra
+                </button>
+                <button onclick="showPage('menu-section')" class="bg-gray-200 text-gray-800 py-3 px-12 rounded-full font-bold transition-colors hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                    Continuar Comprando
+                </button>
+            </div>
+        </section>
+
+        <!-- Seção de Resumo do Pedido -->
+        <section id="order-summary-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Resumo do Pedido</h2>
+            <div id="order-details" class="bg-gray-50 rounded-lg p-6 mb-8">
+                <!-- Detalhes do pedido serão inseridos aqui -->
+            </div>
+            <div class="flex flex-col items-center">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Escolha a Entrega</h3>
+                <div class="flex space-x-4 mb-8">
+                    <button id="delivery-pickup" class="delivery-option bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors hover:bg-orange-500 hover:text-white">
+                        <i class="fas fa-store mr-2"></i> Retirar na Loja
+                    </button>
+                    <button id="delivery-home" class="delivery-option bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors hover:bg-orange-500 hover:text-white">
+                        <i class="fas fa-motorcycle mr-2"></i> Receber em Casa
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção de Checkout (Pagamento) -->
+        <section id="checkout-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12">
+            <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Finalizar Pedido</h2>
+            <div class="mb-6">
+                <p class="text-lg mb-2">Seu pedido:</p>
+                <ul id="final-order-list" class="list-disc list-inside bg-gray-50 p-4 rounded-lg">
+                    <!-- Lista de itens do pedido aqui -->
+                </ul>
+            </div>
+            <form id="payment-form">
+                <div class="flex flex-col items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Forma de Pagamento</h3>
+                    <div class="flex space-x-4 mb-4">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="payment-method" value="pix" class="hidden peer" required>
+                            <span class="bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors peer-checked:bg-orange-500 peer-checked:text-white hover:bg-orange-500 hover:text-white">
+                                <i class="fas fa-qrcode mr-2"></i> Pix
+                            </span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="payment-method" value="card" class="hidden peer">
+                            <span class="bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors peer-checked:bg-orange-500 peer-checked:text-white hover:bg-orange-500 hover:text-white">
+                                <i class="fas fa-credit-card mr-2"></i> Cartão
+                            </span>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="payment-method" value="cash" class="hidden peer">
+                            <span class="bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors peer-checked:bg-orange-500 peer-checked:text-white hover:bg-orange-500 hover:text-white">
+                                <i class="fas fa-money-bill-wave mr-2"></i> Dinheiro
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Seção de Pagamento -->
+                <div id="payment-details">
+                    <!-- Detalhes do Pix ou Cartão serão renderizados aqui -->
+                    <div id="pix-details" class="hidden flex flex-col items-center text-center">
+                        <img src="https://placehold.co/200x200/000000/FFFFFF?text=QR+CODE+PIX" alt="QR Code Pix" class="w-48 h-48 rounded-lg mb-4">
+                        <p class="text-gray-600 mb-2">Escaneie o QR Code ou copie e cole o código abaixo:</p>
+                        <div class="flex items-center space-x-2 bg-gray-200 p-2 rounded-lg">
+                            <input type="text" id="pix-code" value="123456789012345678901234567890" readonly class="bg-transparent outline-none">
+                            <button type="button" onclick="copyPixCode()" class="bg-orange-500 text-white p-2 rounded-lg hover:bg-orange-600">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="card-form" class="hidden space-y-4">
+                        <div class="input-group">
+                            <input type="text" id="card-number" placeholder=" ">
+                            <label for="card-number">Número do Cartão</label>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="card-name" placeholder=" ">
+                            <label for="card-name">Nome no Cartão</label>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <input type="text" id="card-expiry" placeholder="MM/AA">
+                                <label for="card-expiry">Validade</label>
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="card-cvv" placeholder="CVV">
+                                <label for="card-cvv">CVV</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Campo para troco, visível apenas com "Dinheiro" -->
+                    <div id="change-field" class="hidden input-group mb-6">
+                        <input type="number" id="change-needed" placeholder=" " min="0">
+                        <label for="change-needed">Precisa de troco para quanto?</label>
+                    </div>
+                </div>
+            </form>
+            <div class="text-center mt-6">
+                <button type="button" onclick="confirmPayment()" class="bg-orange-500 text-white py-3 px-12 rounded-full font-bold transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    Confirmar Pagamento
+                </button>
+            </div>
+        </section>
+        
+        <!-- Seção de Acompanhamento do Pedido -->
+        <section id="tracking-section" class="page container mt-12 bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Seu Pedido Está a Caminho!</h2>
+            <p class="text-xl text-gray-600 mb-8">Acompanhe o status da sua entrega em tempo real.</p>
+            <div class="flex justify-center items-center mb-8">
+                <div class="bg-gray-200 rounded-full p-4">
+                    <i class="fas fa-box text-orange-500 text-4xl"></i>
+                </div>
+            </div>
+            <div class="tracking-status-bar mb-4">
+                <div id="tracking-fill" class="tracking-status-bar-fill w-0"></div>
+            </div>
+            <div id="tracking-message" class="text-lg font-semibold text-gray-700">Pedido recebido</div>
+            <p class="text-sm text-gray-500 mt-2">Aguarde, seu lanche está sendo preparado com carinho!</p>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white text-center py-6">
+        <p>&copy; 2024 Nel's Burguer. Todos os direitos reservados.</p>
+    </footer>
+
+    <!-- Modal para detalhes do item -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <div class="text-center">
+                <img id="modal-image" src="" alt="Item" class="w-48 h-48 mx-auto rounded-lg mb-4">
+                <h3 id="modal-title" class="text-3xl font-bold text-gray-800 mb-2"></h3>
+                <p id="modal-description" class="text-gray-600 mb-4"></p>
+                <p id="modal-price" class="text-2xl font-bold text-orange-500 mb-6"></p>
+                <div class="flex justify-center gap-4">
+                    <button id="add-to-cart-btn" class="bg-gray-200 text-gray-800 py-3 px-6 rounded-full font-bold transition-colors hover:bg-orange-500 hover:text-white">
+                        Adicionar ao Carrinho
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Message -->
+    <div id="toast" class="toast-message"></div>
+
+    <script>
+        const MENU_ITEMS = {
+            'nels-classico': {
+                name: "Nel's Clássico",
+                price: 29.90,
+                description: "O clássico que nunca decepciona. Pão de gergelim, hambúrguer 100% carne, cheddar, cebola caramelizada e maionese Nel's.",
+                imageUrl: "hhttps://www.estadao.com.br/resizer/dixyOItHmPSgiedCSBL1iIT5lGo=/arc-anglerfish-arc2-prod-estadao/public/GUOGMQ4FRJIUPAWMYLE4WNA3SY.jpg",
+            },
+            'camargo-vegano': {
+                name: "Camargo Vegano",
+                price: 27.90,
+                description: "A opção celestial. Pão australiano, hambúrguer de grão de bico, queijo branco, rúcula e molho pesto.",
+                imageUrl: "https://img.freepik.com/fotos-gratis/hamburguer-vegetariano-close-up-na-tabua_23-2148784533.jpg",
+            },
+            'camargo-duplo': {
+                name: "Camargo Duplo",
+                price: 34.90,
+                description: "Gigante e saboroso. Pão brioche, dois hambúrgueres de carne, bacon crocante, queijo muçarela e molho barbecue.",
+                imageUrl: "https://media.istockphoto.com/id/1438143625/pt/foto/double-cheese-beef-burger-with-kitchen-background.jpg?s=612x612&w=0&k=20&c=dXrI3vty1KxzE3XWP-56TLwzmiihwzbMTNNBbtWCJ5Y=",
+            },
+            'nels-frango': {
+                name: "Nel's de Frango",
+                price: 28.90,
+                description: "Uma viagem de sabores. Pão de queijo, hambúrguer de frango empanado, alface, tomate, queijo prato e maionese temperada.",
+                imageUrl: "https://www.receitasnestle.com.br/sites/default/files/styles/recipe_detail_desktop_new/public/srh_recipes/ad2f5bca67422df23f8e6916d6afc6a2.jpg?itok=3A6mvEQY",
+            },
+            'camargo-peixe': {
+                name: "Camargo de Peixe",
+                price: 31.90,
+                description: "O sanduíche que expande seus sentidos. Pão italiano, filé de peixe empanado, queijo, cebola roxa e molho tártaro.",
+                imageUrl: "https://www.minhareceita.com.br/app/uploads/2025/04/R0425-SP-hamburguer-de-peixe-empanado-1200x675-1.webp",
+            },
+            'nels-cosmos': {
+                name: "Nel's Cosmos",
+                price: 33.90,
+                description: "A explosão de sabores. Pão de brioche, hambúrguer de carne, queijo cheddar, ovo, bacon e molho especial.",
+                imageUrl: "https://img.freepik.com/fotos-premium/hamburguer-empilhado-duplo-suculento-e-brega-em-fundo-preto-esfumacado-para-banners-de-anuncio-de-site_809816-6.jpg",
+            },
+            'batata-frita': {
+                name: "Batata Frita Nel's",
+                price: 10.00,
+                description: "Batatas crocantes e douradas, o acompanhamento perfeito para o seu lanche.",
+                imageUrl: "https://images.pexels.com/photos/1583884/pexels-photo-1583884.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500",
+            },
+            'milkshake': {
+                name: "Milkshake de Chocolate Camargo",
+                price: 15.00,
+                description: "Cremoso e irresistível. O shake ideal para finalizar a sua refeição.",
+                imageUrl: "https://blog.biglar.com.br/wp-content/uploads/2022/08/iStock-1308045723.jpeg",
+            },
+            'refrigerante': {
+                name: "Refrigerante Nel's",
+                price: 8.00,
+                description: "Diversas opções refrescantes. Consulte o cardápio de bebidas.",
+                imageUrl: "https://wx.mlcdn.com.br/ponzi/production/portaldalu/43225.jpg?ims=fit-in/960x",
+            }
+        };
+
+        const STEPS = [
+            {
+                title: "1. Escolha o Pão",
+                key: "pao",
+                options: [
+                    { name: "Pão Gergelim", price: 5.00, imageUrl: "https://img.freepik.com/fotos-premium/pao-de-hamburguer-com-sementes-de-gergelim-isolado_184700-871.jpg", burgerPartUrl: "https://img.freepik.com/fotos-premium/pao-de-hamburguer-com-sementes-de-gergelim-isolado_184700-871.jpg" },
+                    { name: "Pão 3 Queijos", price: 6.50, imageUrl: "https://sbw-cms.zamp.com.br/foto_desktop_paes_pao_3_queijos_0a66caa996/foto_desktop_paes_pao_3_queijos_0a66caa996.png", burgerPartUrl: "https://sbw-cms.zamp.com.br/foto_desktop_paes_pao_3_queijos_0a66caa996/foto_desktop_paes_pao_3_queijos_0a66caa996.png" },
+                    { name: "Pão Italiano", price: 6.00, imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_wg3oND4nFHGa53Osc5p3K7ig7x0_3CmTZA&s", burgerPartUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_wg3oND4nFHGa53Osc5p3K7ig7x0_3CmTZA&s" }
+                ]
+            },
+            {
+                title: "2. Escolha a Proteína",
+                key: "proteina",
+                options: [
+                    { name: "Hambúrguer Nel", price: 12.00, imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTliNEJ1nQhL0iXc2WwhIi3U4rzmsymGIzKQw&s", burgerPartUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTliNEJ1nQhL0iXc2WwhIi3U4rzmsymGIzKQw&s" },
+                    { name: "Filé de Frango Camargo", price: 10.00, imageUrl: "https://media.istockphoto.com/id/1382333146/pt/foto/grilled-healthy-chicken-breasts-cooked-on-a-grill-pan-black-background-top-view.jpg?s=612x612&w=0&k=20&c=ytlld1juF-60hDFtfStBc4QCMSK2E5a0SFNQXFNe52k=", burgerPartUrl: "https://media.istockphoto.com/id/1382333146/pt/foto/grilled-healthy-chicken-breasts-cooked-on-a-grill-pan-black-background-top-view.jpg?s=612x612&w=0&k=20&c=ytlld1juF-60hDFtfStBc4QCMSK2E5a0SFNQXFNe52k=" },
+                    { name: "Hambúrguer Soja Nel", price: 9.00, imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS09umdTlbl8L6XgdeIX_4ubVn07FZXFRaT6w&s", burgerPartUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS09umdTlbl8L6XgdeIX_4ubVn07FZXFRaT6w&s" },
+                    { name: "Filé de Peixe Camargo", price: 11.00, imageUrl: "https://media.istockphoto.com/id/950368628/pt/foto/fish-and-chips.jpg?s=612x612&w=0&k=20&c=MkUDdJrQ1NU0cT7kjny4l12b2FPOiGbtlZK2XqHqSEs=", burgerPartUrl: "https://media.istockphoto.com/id/950368628/pt/foto/fish-and-chips.jpg?s=612x612&w=0&k=20&c=MkUDdJrQ1NU0cT7kjny4l12b2FPOiGbtlZK2XqHqSEs=" }
+                ]
+            },
+            {
+                title: "3. Escolha os Vegetais",
+                key: "vegetais",
+                options: [
+                    { name: "Alface Nel", price: 1.00, imageUrl: "https://img.freepik.com/fotos-premium/alface-americana-com-babados-verdes-isolada-no-fundo-branco_403166-1590.jpg", burgerPartUrl: "https://placehold.co/400x100/16a34a/ffffff?text=Alface" },
+                    { name: "Tomate Camargo", price: 1.50, imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5QDEh_DlaEHhVFCBWF5fAlCELpBp7ynodSg&s", burgerPartUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5QDEh_DlaEHhVFCBWF5fAlCELpBp7ynodSg&s" },
+                    { name: "Cebola Roxa Nel", price: 1.00, imageUrl: "https://img.freepik.com/fotos-premium/cebola-roxa-isolada_253984-4949.jpg", burgerPartUrl: "https://img.freepik.com/fotos-premium/cebola-roxa-isolada_253984-4949.jpg" },
+                    { name: "Picles Camargo", price: 1.25, imageUrl: "https://placehold.co/200x200/15803d/ffffff?text=Picles", burgerPartUrl: "https://placehold.co/400x100/4d7c0f/ffffff?text=Picles" }
+                ]
+            },
+            {
+                title: "4. Escolha o Queijo",
+                key: "queijo",
+                options: [
+                    { name: "Cheddar Nel", price: 2.00, imageUrl: "https://placehold.co/200x200/d97706/ffffff?text=Cheddar", burgerPartUrl: "https://placehold.co/400x100/f59e0b/ffffff?text=Cheddar" },
+                    { name: "Muçarela Camargo", price: 2.50, imageUrl: "https://placehold.co/200x200/d97706/ffffff?text=Mu%C3%A7arela", burgerPartUrl: "https://placehold.co/400x100/facc15/ffffff?text=Mu%C3%A7arela" },
+                    { name: "Prato Nel", price: 2.00, imageUrl: "https://placehold.co/200x200/d97706/ffffff?text=Prato", burgerPartUrl: "https://placehold.co/400x100/eab308/ffffff?text=Prato" }
+                ]
+            },
+            {
+                title: "5. Escolha o Molho",
+                key: "molho",
+                options: [
+                    { name: "Maionese Nel", price: 1.00, imageUrl: "https://placehold.co/200x200/fde047/a16207?text=Maionese", burgerPartUrl: "https://placehold.co/400x100/fde047/a16207?text=Maionese" },
+                    { name: "Barbecue Camargo", price: 1.50, imageUrl: "https://placehold.co/200x200/fde047/a16207?text=Barbecue", burgerPartUrl: "https://placehold.co/400x100/b91c1c/ffffff?text=Barbecue" },
+                    { name: "Pesto Nel", price: 2.00, imageUrl: "https://placehold.co/200x200/fde047/a16207?text=Pesto", burgerPartUrl: "https://placehold.co/400x100/15803d/ffffff?text=Pesto" },
+                    { name: "Molho da Casa Camargo", price: 1.75, imageUrl: "https://placehold.co/200x200/fde047/a16207?text=Casa", burgerPartUrl: "https://placehold.co/400x100/facc15/ffffff?text=Molho+da+Casa" }
+                ]
+            }
+        ];
+
+        let state = {
+            currentPage: 'hero-section',
+            currentStepIndex: 0,
+            selectedIngredients: {},
+            currentTotalPrice: 0,
+            cart: [],
+            deliveryOption: null,
+            orderReady: false
+        };
+
+        const pages = document.querySelectorAll('.page');
+        const ingredientOptionsDiv = document.getElementById('ingredient-options');
+        const currentStepTitle = document.getElementById('current-step-title');
+        const totalPriceSpan = document.getElementById('total-price');
+        const prevBtn = document.getElementById('prev-step');
+        const nextBtn = document.getElementById('next-step');
+        const burgerBuilderDiv = document.querySelector("#builder-section .relative");
+        const toastDiv = document.getElementById('toast');
+        const orderDetailsDiv = document.getElementById('order-details');
+        const deliveryPickupBtn = document.getElementById('delivery-pickup');
+        const deliveryHomeBtn = document.getElementById('delivery-home');
+        const paymentForm = document.getElementById('payment-form');
+        const changeField = document.getElementById('change-field');
+        const finalOrderList = document.getElementById('final-order-list');
+        const trackingFill = document.getElementById('tracking-fill');
+        const trackingMessage = document.getElementById('tracking-message');
+        const itemModal = document.getElementById('item-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalImage = document.getElementById('modal-image');
+        const modalDescription = document.getElementById('modal-description');
+        const modalPrice = document.getElementById('modal-price');
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+        const cartList = document.getElementById('cart-list');
+        const cartTotalPriceSpan = document.getElementById('cart-total-price');
+        const cartCountSpan = document.getElementById('cart-count');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+        const pixDetails = document.getElementById('pix-details');
+        const cardForm = document.getElementById('card-form');
+        
+        // Funções de Utilidade
+        function showPage(pageId) {
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+            state.currentPage = pageId;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (pageId === 'cart-section') {
+                renderCart();
+            } else if (pageId === 'checkout-section') {
+                 renderFinalOrder();
+            }
+        }
+
+        function showToast(message) {
+            toastDiv.textContent = message;
+            toastDiv.classList.add('show');
+            setTimeout(() => {
+                toastDiv.classList.remove('show');
+            }, 3000);
+        }
+
+        // Funções da Esteira de Montagem
+        function renderIngredients() {
+            ingredientOptionsDiv.innerHTML = '';
+            const step = STEPS[state.currentStepIndex];
+            currentStepTitle.textContent = step.title;
+
+            const selectedKey = state.selectedIngredients[step.key];
+
+            step.options.forEach(option => {
+                const isSelected = selectedKey && selectedKey.name === option.name;
+                const ingredientItem = document.createElement('div');
+                ingredientItem.className = `ingredient-item bg-gray-50 rounded-lg p-4 text-center shadow-sm hover:shadow-md transition-all duration-300 ${isSelected ? 'selected' : ''}`;
+                ingredientItem.innerHTML = `
+                    <img src="${option.imageUrl}" alt="${option.name}" class="w-full h-auto mb-2 rounded-md">
+                    <h4 class="font-semibold text-gray-800">${option.name}</h4>
+                    <span class="text-sm text-gray-600">R$ ${option.price.toFixed(2).replace('.', ',')}</span>
+                `;
+                ingredientItem.onclick = () => selectIngredient(step.key, option);
+                ingredientOptionsDiv.appendChild(ingredientItem);
+            });
+
+            updateButtonStates();
+        }
+
+        function selectIngredient(key, option) {
+            state.selectedIngredients[key] = option;
+            calculateBuilderPrice();
+            renderIngredients();
+            renderBurger();
+            showToast(`${option.name} selecionado!`);
+        }
+
+        function calculateBuilderPrice() {
+            let total = 0;
+            for (const key in state.selectedIngredients) {
+                total += state.selectedIngredients[key].price;
+            }
+            state.currentTotalPrice = total;
+            totalPriceSpan.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        function renderBurger() {
+            burgerBuilderDiv.innerHTML = '';
+            const burgerParts = Object.values(state.selectedIngredients).map(item => item.burgerPartUrl);
+            
+            // Adiciona a base e o topo do pão, se o pão foi selecionado
+            if (state.selectedIngredients.pao) {
+                const paoInferior = "https://placehold.co/400x100/fde047/a16207?text=P%C3%A3o+Inferior";
+                const paoSuperior = "https://placehold.co/400x100/fde047/a16207?text=P%C3%A3o+Superior";
+                const tempParts = [paoInferior, ...burgerParts.slice(1), paoSuperior];
+                
+                tempParts.forEach((url, index) => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = `burger-part visible z-${index * 10}`;
+                    burgerBuilderDiv.appendChild(img);
+                });
+            } else {
+                 const paoInferior = "https://placehold.co/400x100/fde047/a16207?text=P%C3%A3o+Inferior";
+                 const img = document.createElement('img');
+                 img.src = paoInferior;
+                 img.className = `burger-part visible z-0`;
+                 burgerBuilderDiv.appendChild(img);
+            }
+        }
+
+        function updateButtonStates() {
+            prevBtn.disabled = state.currentStepIndex === 0;
+            prevBtn.classList.toggle('bg-gray-300', state.currentStepIndex === 0);
+            prevBtn.classList.toggle('hover:bg-gray-400', state.currentStepIndex === 0);
+            prevBtn.classList.toggle('bg-orange-500', state.currentStepIndex > 0);
+            prevBtn.classList.toggle('hover:bg-orange-600', state.currentStepIndex > 0);
+
+            nextBtn.textContent = state.currentStepIndex === STEPS.length - 1 ? 'Adicionar ao Carrinho' : 'Próximo';
+        }
+
+        function handleNextStep() {
+            const currentKey = STEPS[state.currentStepIndex].key;
+            if (!state.selectedIngredients[currentKey]) {
+                showToast("Por favor, selecione uma opção para continuar!");
+                return;
+            }
+
+            if (state.currentStepIndex < STEPS.length - 1) {
+                state.currentStepIndex++;
+                renderIngredients();
+            } else {
+                addToCart({ name: "Lanche Personalizado", price: state.currentTotalPrice, description: "Seu lanche criado por você.", ingredients: state.selectedIngredients });
+                state.currentStepIndex = 0; // Reseta o builder
+                state.selectedIngredients = {};
+                calculateBuilderPrice();
+                renderIngredients();
+                renderBurger();
+                showPage('cart-section');
+            }
+        }
+
+        function handlePrevStep() {
+            if (state.currentStepIndex > 0) {
+                state.currentStepIndex--;
+                renderIngredients();
+            }
+        }
+
+        prevBtn.addEventListener('click', handlePrevStep);
+        nextBtn.addEventListener('click', handleNextStep);
+
+        // Funções de Modal e Carrinho
+        let currentItem = null;
+        function showItemDetails(itemId) {
+            const item = MENU_ITEMS[itemId];
+            if (!item) return;
+
+            currentItem = item;
+            modalTitle.textContent = item.name;
+            modalImage.src = item.imageUrl;
+            modalDescription.textContent = item.description;
+            modalPrice.textContent = `R$ ${item.price.toFixed(2).replace('.', ',')}`;
+            
+            // Adiciona event listeners para os botões do modal
+            addToCartBtn.onclick = () => {
+                addToCart(item);
+                closeModal();
+            };
+
+            itemModal.classList.add('open');
+        }
+
+        function closeModal() {
+            itemModal.classList.remove('open');
+        }
+
+        function addToCart(item) {
+            state.cart.push(item);
+            updateCartCount();
+            showToast(`${item.name} adicionado ao carrinho!`);
+        }
+
+        function updateCartCount() {
+            const count = state.cart.length;
+            cartCountSpan.textContent = count;
+            if (count > 0) {
+                cartCountSpan.classList.remove('hidden');
+            } else {
+                cartCountSpan.classList.add('hidden');
+            }
+        }
+
+        function renderCart() {
+            cartList.innerHTML = '';
+            let total = 0;
+            if (state.cart.length === 0) {
+                emptyCartMessage.classList.remove('hidden');
+            } else {
+                emptyCartMessage.classList.add('hidden');
+                state.cart.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-white p-4 rounded-lg shadow-sm mb-2';
+                    li.innerHTML = `
+                        <div class="flex items-center gap-4">
+                            <img src="${item.imageUrl || 'https://placehold.co/50x50'}" alt="${item.name}" class="w-12 h-12 rounded-full object-cover">
+                            <span class="font-semibold text-gray-800">${item.name}</span>
+                        </div>
+                        <span class="font-bold text-orange-500">R$ ${item.price.toFixed(2).replace('.', ',')}</span>
+                    `;
+                    cartList.appendChild(li);
+                    total += item.price;
+                });
+            }
+            cartTotalPriceSpan.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+        
+        // Funções de Resumo e Pagamento
+        function renderFinalOrder() {
+            finalOrderList.innerHTML = '';
+            let total = 0;
+            state.cart.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${item.name}</strong> - R$ ${item.price.toFixed(2).replace('.', ',')}`;
+                finalOrderList.appendChild(li);
+                total += item.price;
+            });
+            const totalLi = document.createElement('li');
+            totalLi.className = 'mt-2 font-bold text-orange-600';
+            totalLi.textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+            finalOrderList.appendChild(totalLi);
+        }
+
+        function confirmPayment() {
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked');
+            if (!paymentMethod) {
+                showToast("Por favor, selecione uma forma de pagamento para continuar.");
+                return;
+            }
+
+            const method = paymentMethod.value;
+            let message = "Seu pedido foi confirmado!";
+            
+            if (method === 'pix') {
+                 message = "Seu pedido foi confirmado! Realize o pagamento via Pix.";
+            } else if (method === 'card') {
+                 message = "Seu pedido foi confirmado! O pagamento com cartão será processado.";
+            } else if (method === 'cash') {
+                const troco = document.getElementById('change-needed').value;
+                message = `Seu pedido foi confirmado! Prepare R$ ${state.currentTotalPrice.toFixed(2).replace('.', ',')} ${troco ? ' com troco para R$ ' + troco.replace('.', ',') : ''}.`;
+            }
+
+            showToast(message);
+            showPage('tracking-section');
+            startTracking();
+        }
+
+        document.querySelectorAll('input[name="payment-method"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                pixDetails.classList.add('hidden');
+                cardForm.classList.add('hidden');
+                changeField.classList.add('hidden');
+
+                if (e.target.value === 'pix') {
+                    pixDetails.classList.remove('hidden');
+                } else if (e.target.value === 'card') {
+                    cardForm.classList.remove('hidden');
+                } else if (e.target.value === 'cash') {
+                    changeField.classList.remove('hidden');
+                }
+            });
+        });
+        
+        function copyPixCode() {
+            const pixCodeInput = document.getElementById('pix-code');
+            pixCodeInput.select();
+            document.execCommand('copy');
+            showToast("Código Pix copiado!");
+        }
+
+        // Funções de Acompanhamento
+        function startTracking() {
+            let progress = 0;
+            const statusMessages = [
+                "Pedido recebido",
+                "Seu lanche está sendo preparado",
+                "Lanche na embalagem",
+                "Entregador a caminho",
+                "Pedido entregue"
+            ];
+            
+            const interval = setInterval(() => {
+                progress += 25;
+                trackingFill.style.width = `${progress}%`;
+                
+                if (progress <= 100) {
+                    trackingMessage.textContent = statusMessages[progress / 25];
+                }
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    showToast("Seu pedido foi entregue!");
+                }
+            }, 3000); // Avança o status a cada 3 segundos
+        }
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage('hero-section');
+            renderIngredients();
+            renderBurger();
+        });
+    </script>
+</body>
+</html>
